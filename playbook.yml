@@ -1,0 +1,210 @@
+- hosts: webservers
+  remote_user: root
+  tasks:
+    - name: Nginx Kurulumuna Başlandı.
+      apt:
+        name: nginx
+        state: latest
+    - name: Nginx Servisi Başlatılıyor.
+      service:
+        name: nginx
+        state: started
+    - name: Python Pip Kuruluyor.
+      apt : 
+        name: python3-pip
+        state: latest
+    - name: Python-Dev Kuruluyor.
+      apt:
+        name: python-dev
+        state: latest
+    - name: LibMysqlClient Kuruluyor.
+      apt:
+        name: libmysqlclient-dev 
+        state: latest
+    - name: Python PyMsql Kuruluyor.
+      pip:
+        name: pymysql
+        state: latest
+    - name : Mysql Kurulumu Başlatılıyor.
+      apt :
+        name: mysql-server
+        state : latest 
+    - name: Mysql Configurasyonları Yapılıyor.
+      copy:
+        src: /root/mysqld.cnf
+        dest: /etc/mysql/mysql.conf.d/mysqld.cnf
+        owner: root        
+    - name: Mysql Servisi Başlatılıyor.
+      service: 
+        name: mysql
+        state: restarted
+        enabled: yes
+      become: yes
+    - name: test Veritabanı Oluşturuluyor.
+      mysql_db:
+        login_unix_socket: /var/run/mysqld/mysqld.sock  
+        login_port: 7003      
+        name: test
+        state: present
+    - name: Mysql Kullanıcısı Oluşturuluyor.
+      mysql_user:
+        login_unix_socket: /var/run/mysqld/mysqld.sock   
+        login_port: 7003   
+        host: '%'  
+        name: omerfaruk
+        password: '12345Faruk@'
+        priv: '*.*:ALL'
+        state: present  
+    - name: Minio Kurulumu Başlatılıyor.   
+      get_url:
+        url: https://dl.min.io/server/minio/release/linux-amd64/minio
+        dest: '/root/minio'
+        mode: a+x
+    - name: Minio Dosyaları /usr/local/bin Kopyalanıyor.
+      command: mv /root/minio /usr/local/bin
+    - name: Minio Kullanıcısı Oluşturuluyor
+      command: sudo useradd -r minio-user -s /sbin/nologin
+    - name: Minio Kullanıcı Yetkileri Ayarlanıyor.
+      command: sudo chown minio-user:minio-user /usr/local/bin/minio
+    - name: Minio Dosyaların Kaydedileceği Dizin Oluşturuluyor
+      command: mkdir /usr/local/share/minio
+    - name: Minio Kullanıcı Dizin İzinleri Yapılıyor
+      command: sudo chown minio-user:minio-user /usr/local/share/minio
+    - name: Minio etc Dizini Oluşturuluyor
+      command: mkdir /etc/minio
+    - name: Minio Kullanıcı Dizin İzinleri Yapılıyor.
+      command: sudo chown minio-user:minio-user /etc/minio
+    - name: Minio Config Dosyası Oluşturuluyor.
+      copy:
+        src: /root/minio
+        dest: /etc/default/minio
+        owner: root
+    - name: Minio Servisi Oluşturuluyor.
+      copy:
+        src: /root/minio.service
+        dest: /etc/systemd/system/minio.service
+        owner: root
+    - name: Daemon Reload
+      command: systemctl daemon-reload
+    - name: Minio Boot Esnasında Çalışacak Şekilde Ayarlanıyor.
+      command: systemctl enable minio
+    - name: Minio Servisi Başlatılıyor
+      command: systemctl start minio    
+    - name: Apt Update ve Upgrade İşlemi Yapılıyor.
+      apt:
+        update_cache: yes
+        upgrade: 'yes'
+    - name: Build Essential Yükleniyor.
+      apt:
+        name: build-essential
+        state: latest
+    - name: Tcl Yükleniyor
+      apt:
+        name: tcl
+        state: latest
+    - name: Redis Dosyaları Yükleniyor.
+      get_url:
+        url: http://download.redis.io/redis-stable.tar.gz
+        dest: /tmp/redis-stable.tar.gz
+        mode: a+x
+    - name: Redis Klasörü Oluşturuluyor.
+      command: mkdir /tmp/redis-stable
+    - name: Redis Dosyaları Arşivden Çıkarılıyor
+      unarchive:
+        src: /tmp/redis-stable.tar.gz
+        dest: /tmp/redis-stable
+        remote_src: yes
+    - name: Redis Kurulumu Başlatılıyor
+      make:
+        chdir: /tmp/redis-stable/redis-stable
+        target: install
+      become: yes
+    - name: Redis Dizini Oluşturuluyor.
+      command: mkdir /etc/redis
+    - name: Redis Config Oluşturuluyor
+      copy:
+        src: /root/redis.conf
+        dest: /etc/redis/redis.conf
+        owner: root
+    - name: Redis Servis Dosyası Oluşturuluyor.
+      copy:
+        src: /root/redis.service
+        dest: /etc/systemd/system/redis.service
+        owner: root
+    - name: Redis Dosyaları Oluşturuluyor
+      command: mkdir /var/lib/redis
+    - name: Redis Dosya İzinleri Değiştiriliyor.
+      file:
+        dest: /var/lib/redis
+        mode: a+x
+    - name: Systemctl Daemon-Reload
+      command: systemctl daemon-reload
+    - name: Redis Servisi Boot Esnasında Çalışacak Şekilde Ayarlanıyor
+      command: systemctl enable redis
+    - name: Redis Servisi Başlatılıyor
+      command: systemctl start redis
+    - name: Erlang Kurulum Paketi İndiriliyor
+      get_url:
+        url : https://packages.erlang-solutions.com/erlang-solutions_1.0_all.deb
+        dest: /opt/
+        mode: a+x
+    - name: Erlang Paketi Açılıyor
+      command: dpkg -i /opt/erlang-solutions_1.0_all.deb
+    - name: Apt Update ve Upgrade İşlemi Yapılıyor.
+      apt:
+        update_cache: yes
+        upgrade: 'yes'
+    - name: Erlang Kuruluyor
+      apt:
+        name: erlang
+        state: latest
+    - name: RabbitMq Repository Güncelleniyor.
+      shell: echo "deb https://dl.bintray.com/rabbitmq/debian xenial main" | sudo tee /etc/apt/sources.list.d/bintray.rabbitmq.list
+    - name: RabbitMq Dosyaları İndiriliyor
+      get_url : 
+        url: https://www.rabbitmq.com/rabbitmq-release-signing-key.asc
+        dest: /root
+        owner: root
+    - name: RabbitMq Repoları Ekleniyor
+      shell: apt-key add /root/rabbitmq-release-signing-key.asc
+    - name: Apt Update ve Upgrade İşlemi Yapılıyor
+      apt:
+        update_cache: yes
+        upgrade: 'yes'
+    - name: Systemctl Daemon Reload
+      command: systemctl daemon-reload
+    - name: RabbitMq Server Kuruluyor
+      apt:
+        name: rabbitmq-server
+        state: latest
+    - name: RabbitMq Servisi Başlatılıyor
+      shell: systemctl start rabbitmq-server.service
+    - name: RabbitMq Boot Esnasında Çalışacak Şekilde Ayarlanıyor.
+      shell: systemctl enable rabbitmq-server.service
+    - name: RabbitMq Kullanıcısı Oluşturuluyor
+      shell: rabbitmqctl add_user root CB4434000bc
+    - name: RabbitMq Kullanıcı İzinleri Oluşturuluyor
+      shell: rabbitmqctl set_user_tags root administrator
+    - name: RabbitMq Kullanıcı İzinleri Oluşturuluyor
+      shell: rabbitmqctl set_permissions -p / root ".*" ".*" ".*"
+    - name: RabbitMq Web Dashboard Oluşturuluyor.
+      shell: rabbitmq-plugins enable rabbitmq_management
+    - name: RabbitMq Kullanıcı İzinleri Yapılandırılıyor
+      shell: chown -R rabbitmq:rabbitmq /var/lib/rabbitmq/
+    - name: RabbitMq Configleri Oluşturuluyor
+      copy:
+        src: /root/rabbitmq.config
+        dest: /etc/rabbitmq/rabbitmq.config
+        owner: root
+    - name: Kurulum Bitti. Servisler Yeniden Başlatılacak. Mysql Yeniden Başlatılıyor.
+      shell: service mysql restart
+    - name: Minio Yeniden Başlatılıyor
+      shell: systemctl restart minio.service
+    - name: Redis Yeniden Başlatılıyor.
+      shell: systemctl restart redis.service
+    - name: RabbitMq Yeniden Başlatılıyor.
+      shell: systemctl restart rabbitmq-server.service
+    
+    
+        
+
