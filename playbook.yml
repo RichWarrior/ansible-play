@@ -182,7 +182,7 @@
     - name: RabbitMq Boot Esnasında Çalışacak Şekilde Ayarlanıyor.
       shell: systemctl enable rabbitmq-server.service
     - name: RabbitMq Kullanıcısı Oluşturuluyor
-      shell: rabbitmqctl add_user root CB4434000bc
+      shell: rabbitmqctl add_user root 123
     - name: RabbitMq Kullanıcı İzinleri Oluşturuluyor
       shell: rabbitmqctl set_user_tags root administrator
     - name: RabbitMq Kullanıcı İzinleri Oluşturuluyor
